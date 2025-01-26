@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-lasso = "0.7.3"
-string-interner = "0.17.0"
+lasso = { version = "0.7.3", features = ["multi-threaded"] }
+rug = "1.26.1"

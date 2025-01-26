@@ -1,5 +1,5 @@
-use lasso::ThreadedRodeo;
-use std::{thread, sync::Arc};
+use lasso::{ThreadedRodeo, Spur};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct Lexer<'a> {
@@ -8,7 +8,7 @@ pub struct Lexer<'a> {
     interner: &'a mut Arc<ThreadedRodeo>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum TokenKind {
     Eq,
     EqEq,
@@ -24,12 +24,12 @@ pub enum TokenKind {
 pub struct Token {
     kind: TokenKind,
     pos: u32,
-    value: DefaultSymbol
+    value: Spur
 }
 
 impl Token {
     fn new(kind: TokenKind, pos: u32) -> Token {
-        let sym = DefaultSymbol::try_from_usize(0).unwrap();
+        let sym = Spur::default();
         Token {
             kind, pos, value: sym,
         }
@@ -56,11 +56,12 @@ Parser {
 */
 
 impl<'a> Lexer<'a> {
-    pub fn new(content: &'a str, interner: &'a mut DefaultStringInterner) -> Self {
+    
+    pub fn new(content: &'a str, interner: &'a mut Arc<ThreadedRodeo>) -> Self {
         Lexer {
-            content: content,
+            content,
             pos: 0,
-            interner: interner
+            interner
         }
     }
 
@@ -69,14 +70,14 @@ impl<'a> Lexer<'a> {
             self.pos += 1;
             return (self.pos - 1, ch);
         }
-        return (self.pos, '\0');
+        (self.pos, '\0')
     }
 
     fn peek(&self) -> char {
         if let Some(ch) = self.content.chars().nth(self.pos as usize) {
             return ch
         }
-        return '\0'
+        '\0'
     }
 
     fn consume(&mut self) {
@@ -93,7 +94,7 @@ impl<'a> Lexer<'a> {
         }
         let symbol = self.interner.get_or_intern(identifier);
         token.value = symbol;
-        return token;
+        token
     }
 
     fn get_token(&mut self, pos: u32, ch: char) -> Option<Token> {
@@ -115,10 +116,10 @@ impl<'a> Lexer<'a> {
                     Some(Token::new(TokenKind::Eq, pos))
                 }
             },
-            'A'..'z' => {
+            'A'..='z' => {
                 Some(self.consume_identifier(pos))
             },
-            '0'..'9' => {
+            '0'..='9' => {
                 None
             },
             '-' => {
@@ -150,24 +151,39 @@ impl<'a> Lexer<'a> {
         }
         tokens.push(Token::new(TokenKind::Eof, self.pos));
         return tokens;
-
-
     }
 }
 
 
 #[test]
 pub fn test_unrecognized() {
-    let mut interner = DefaultStringInterner::default();
-    let mut lexer = Lexer::new("==Hg_kjdg =  fDg fDg\n", &mut interner);
+    let mut interner = Arc::new(ThreadedRodeo::default());
+    let mut lexer = Lexer::new("==Hg_kjdg =\n", &mut interner);
     assert_eq!(lexer.lex(), vec![
         Token::new(TokenKind::EqEq, 0),
         Token::new(TokenKind::Identifier, 2),
         Token::new(TokenKind::Whitespace, 9),
         Token::new(TokenKind::Eq, 10),
-        Token::new(TokenKind::Whitespace, 11),
-        Token::new(TokenKind::Identifier, 13),
-        Token::new(TokenKind::Newline, 16),
-        Token::new(TokenKind::Eof, 17)
+        Token::new(TokenKind::Newline, 11),
+        Token::new(TokenKind::Eof, 12)
         ])
+}
+
+#[test]
+fn test_match_tokens() {
+    let mut interner = Arc::new(ThreadedRodeo::default());
+    let mut lexer = Lexer::new("== =\n", &mut interner);
+    let tokenKinds: Vec<TokenKind> = lexer.lex().iter().map(|token| token.kind).collect();
+    assert_eq!(tokenKinds, vec![
+        TokenKind::EqEq,
+        TokenKind::Whitespace,
+        TokenKind::Eq,
+        TokenKind::Newline,
+        TokenKind::Eof
+        ])
+}
+
+#[test]
+fn ensure_size() {
+    assert_eq!(size_of::<Token>(), 24);
 }
