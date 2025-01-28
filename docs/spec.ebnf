@@ -1,0 +1,8 @@
+expression = term  { ("+" | "-") term } .
+term = factor  { ("*" | "/") factor } .
+factor = integer | ( "("  expression  ")" ) .
+number_literal = { "0"..."9" } .
+bool_expression =  bool_term { ( "||" | "&&" ) bool_term } .
+bool_term = bool_literal | ( "(" bool_expression ")" ) | comparison_expression .
+bool_literal = "true" | "false" .
+comparison_expression = expression ( "<" | "<=" | ">" | ">=" | "==" | "!=" ) expression .

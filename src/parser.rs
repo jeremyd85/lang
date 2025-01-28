@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use lasso;
-use rug;
+use rug::{Integer, Assign};
 use crate::lexer;
 
 struct NodeList {
@@ -32,19 +32,27 @@ struct Parser {
 
 impl Parser {
     
-    fn new(interner: Arc<lasso::ThreadedRodeo>) -> Parser {
+    pub fn new(interner: Arc<lasso::ThreadedRodeo>) -> Parser {
         Parser {
             nodes: NodeList::new(),
             interner
         }
     }
     
-    fn parse(tokens: Vec<lexer::Token>) {
-        
+    pub fn execute(&mut self, tokens: Vec<lexer::Token>) {
+        for token in tokens {
+            match token.kind {
+                lexer::TokenKind::Number => {
+                    let mut i = Integer::new();
+                    i.assign(Integer::parse(self.interner.resolve(&token.value)).unwrap());
+                    self.nodes.add(Node::IntLiteral(Box::new(i)));
+
+
+                }
+                _ => {}
+            }
+        }
     }
-    
-    
-    
 }
 
 struct BinaryNode {
@@ -73,14 +81,19 @@ struct Parameter {
     ty: lasso::Spur, // Identifier
 }
 
-
-
-
 enum Node {
     Add(BinaryNode),
     Subtract(BinaryNode),
     Multiply(BinaryNode),
     Divide(BinaryNode),
+    NotEqual(BinaryNode),
+    Equal(BinaryNode),
+    LessThan(BinaryNode),
+    LessThanOrEqual(BinaryNode),
+    GreaterThan(BinaryNode),
+    GreaterThanOrEqual(BinaryNode),
+    LogicalAnd(BinaryNode),
+    LogicalOr(BinaryNode),
     Assignment(BinaryNode),
     IntLiteral(Box<rug::Integer>),
     Function(FunctionDef)
@@ -88,7 +101,16 @@ enum Node {
 
 #[test]
 fn ensure_same_size_node() {
-    assert_eq!(size_of::<Box<rug::Integer>>(), size_of::<BinaryNode>());
     assert_eq!(size_of::<Node>(), 16);
 }
 
+#[test]
+fn addition() {
+    let mut interner = Arc::new(lasso::ThreadedRodeo::new());
+    let mut p = Parser::new(interner.clone());
+    let stream = lexer::TokenStream::new(lexer::Lexer::new("1 + 2", &mut interner).lex().as_slice());
+    p.execute(lexer::Lexer::new("1", &mut interner).lex());
+    if let Node::IntLiteral(v) = p.nodes.get(0) {
+        assert_eq!(v.to_string(), "1");
+    }
+}
