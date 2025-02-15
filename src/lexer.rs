@@ -37,7 +37,7 @@ pub enum TokenKind {
     RParenthesis,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Token {
     pub kind: TokenKind,
     pub pos: u32,
@@ -250,18 +250,29 @@ impl TokenStream<'_> {
         self.tokens.get(self.pos as usize)
     }
 
-    pub fn advance(&mut self) {
+    pub fn advance(&mut self) -> Option<&Token> {
         self.pos += 1;
+        return self.tokens.get((self.pos - 1) as usize);
     }
 
     pub fn consume(&mut self, token_kind: TokenKind) -> Option<&Token> {
-        self.pos += 1;
-        let token: Option<&Token> = self.peek();
-        if let Some(t) = token {
+        if let Some(t) = self.peek() {
             if t.kind == token_kind {
-                return Some(t);
+                return self.advance();
             }
+        }
+        None
+    }
+    
+    pub fn consume_one_of(&mut self, token_kinds: &[TokenKind]) -> Option<&Token> {
+        let token = self.peek();
+        if token.is_none() {
             return None;
+        }
+        for kind in token_kinds {
+            if token.unwrap().kind == *kind {
+                return self.advance();
+            }
         }
         None
     }

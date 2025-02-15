@@ -1,7 +1,18 @@
+use std::str::FromStr;
 use std::sync::Arc;
 use lasso;
-use rug::{Integer, Assign};
+use thiserror::Error;
 use crate::lexer;
+use crate::lexer::{TokenKind, TokenStream};
+
+
+#[derive(Debug, Error)]
+struct CompileError {
+    start_pos: u32,
+    end_pos: u32,
+    message: String
+}
+
 
 struct NodeList {
     nodes: Vec<Node>
@@ -25,17 +36,40 @@ impl NodeList {
 
 type NodeIndex = u32;
 
-struct Parser {
+struct Parser<'a> {
     nodes: NodeList,
     interner: Arc<lasso::ThreadedRodeo>,
+    stream: &'a mut TokenStream<'a>
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
     
-    pub fn new(interner: Arc<lasso::ThreadedRodeo>) -> Parser {
+    pub fn new(token_stream: &'a mut TokenStream<'a>, interner: Arc<lasso::ThreadedRodeo>) -> Parser<'a> {
         Parser {
             nodes: NodeList::new(),
+            stream: token_stream,
             interner
+        }
+    }
+    
+    pub fn parse_expression(&mut self) -> Option<NodeIndex> {
+        let lhs = self.parse_term();
+        if lhs.is_none() {
+            return None;
+        }
+        self.stream.consume(TokenKind::Plus);
+        None
+    }
+    
+    pub fn parse_term(&mut self) -> Option<NodeIndex> {
+        None
+    }
+    
+    pub fn parse_int_literal(&mut self) -> Option<NodeIndex> {
+        
+        let s = self.interner.resolve(&token.value);
+        if let Ok(i64::from_str(s)) {
+            
         }
     }
     
@@ -43,9 +77,7 @@ impl Parser {
         for token in tokens {
             match token.kind {
                 lexer::TokenKind::Number => {
-                    let mut i = Integer::new();
-                    i.assign(Integer::parse(self.interner.resolve(&token.value)).unwrap());
-                    self.nodes.add(Node::IntLiteral(Box::new(i)));
+                    
 
 
                 }
@@ -55,32 +87,38 @@ impl Parser {
     }
 }
 
+#[derive(Clone, Copy)]
 struct BinaryNode {
     lhs: NodeIndex,
     rhs: NodeIndex,
 }
 
+#[derive(Clone, Copy)]
 struct FunctionDef {
     signature: NodeIndex, // Signature
     body: NodeIndex, // FunctionBody
 }
 
+#[derive(Clone, Copy)]
 struct Signature {
     name: lasso::Spur, // Identifier
     parameters: NodeIndex, // Parameters
 }
 
+#[derive(Clone, Copy)]
 struct Parameters {
     parameter: NodeIndex, // Parameter
     next: NodeIndex // Parameters
     
 }
 
+#[derive(Clone, Copy)]
 struct Parameter {
     name: lasso::Spur, // Identifier
     ty: lasso::Spur, // Identifier
 }
 
+#[derive(Clone)]
 enum Node {
     Add(BinaryNode),
     Subtract(BinaryNode),
@@ -95,7 +133,8 @@ enum Node {
     LogicalAnd(BinaryNode),
     LogicalOr(BinaryNode),
     Assignment(BinaryNode),
-    IntLiteral(Box<rug::Integer>),
+    IntLiteral(i64),
+    FloatLiteral(f64),
     Function(FunctionDef)
 }
 

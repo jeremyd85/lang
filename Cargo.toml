@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 lasso = { version = "0.7.3", features = ["multi-threaded"] }
 rug = "1.26.1"
+thiserror = "2.0.11"
