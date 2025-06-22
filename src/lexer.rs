@@ -111,7 +111,7 @@ impl<'a> Lexer<'a> {
         let mut number = String::from(ch);
         let mut token = Token::new(TokenKind::Number, pos);
         let mut consumed_dot = false;
-        while self.peek().is_ascii_digit() || self.peek() == '.' {
+        while self.peek().is_ascii_digit() {
             if self.peek() == '.' {
                 if consumed_dot {
                     break;
@@ -183,7 +183,7 @@ impl<'a> Lexer<'a> {
                 pos, 
                 TokenKind::BitAnd, 
                 TokenKind::LogicalAnd, 
-                '|')
+                '&')
             ),
             ch if ch.is_ascii_whitespace() => Some(self.consume_whitespace(pos, ch)),
             'A'..='z' => Some(self.consume_identifier(pos, ch)),
